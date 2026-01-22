@@ -1,0 +1,105 @@
+#include <iostream>
+#include <cuda_runtime.h>
+// Kernel function to add two matrices 
+
+
+__global__ void addmatrixfunction(int* matrix_one, int* matrix_two, int* matrix_result)
+{
+	int idx = threadIdx.x;
+	int idy = threadIdx.y;
+	int index = idx * 3 + idy;
+	
+			matrix_result[index] = matrix_one[index] + matrix_two[index];
+	
+			//we use indexing to access the 2D matrix as a 1D array
+			//the formula is row_index * number_of_columns + column_index
+			//in this case, number_of_columns is 3
+			//so for a 3x3 matrix, the index calculation is idx * 3 + idy
+}
+
+
+
+//using object oriented language for cuda
+
+
+class MatrixAddition
+{
+public:
+	int matrix_onec[3][3];
+
+	
+	void Matrix_input()
+	{	
+		std::cout << "Enter element of matrix: "<<std::endl;
+		for (int i = 0; i < 3; i++)
+		{
+			for (int j = 0; j < 3; j++)
+			{
+				std::cin >>matrix_onec[i][j];
+			}
+		}
+	}
+
+	int* data()
+	{
+		return &matrix_onec[0][0];
+	}
+};
+
+
+
+int main()
+{
+	MatrixAddition addmatrix1;
+	MatrixAddition addmatrix2;
+	addmatrix1.Matrix_input();
+	addmatrix2.Matrix_input();
+
+	
+	int matrix_result[3][3]{ 0,0,0,0,0,0,0,0,0 };
+
+	int* matrix_one_d=nullptr;
+	int* matrix_two_d= nullptr;
+	int* matrix_result_d= nullptr;
+
+	// Allocate memory on device
+	cudaMalloc((void**)&matrix_one_d, sizeof(addmatrix1.matrix_onec));
+	cudaMalloc((void**)&matrix_two_d, sizeof(addmatrix2.matrix_onec));
+	cudaMalloc((void**)&matrix_result_d, sizeof(matrix_result));
+	// Copy matrices from host to device
+	cudaMemcpy(matrix_one_d, addmatrix1.data(), sizeof(addmatrix1.matrix_onec), cudaMemcpyHostToDevice);
+	cudaMemcpy(matrix_two_d, addmatrix2.data(), sizeof(addmatrix2.matrix_onec), cudaMemcpyHostToDevice);
+	cudaMemcpy(matrix_result_d, matrix_result, sizeof(matrix_result), cudaMemcpyHostToDevice);
+	// Define block and grid sizes
+
+
+	//the function will be launched with a single block containing 3x3 threads
+	//dim3 gridblocks(1, 1);									// Single block
+	//dim3 function isused to define 2D grid and block dimensions
+	dim3 threadsperblock(3, 3);								// 3x3 threads for 3x3 matrix
+    addmatrixfunction << < 1, threadsperblock >> > (matrix_one_d, matrix_two_d, matrix_result_d);// Launch kernel
+
+	
+	
+	
+	
+	cudaMemcpy(matrix_result, matrix_result_d, sizeof(matrix_result), cudaMemcpyDeviceToHost);
+    std::cout << "Resultant Matrix is: " << std::endl;
+	 for (int i = 0; i < 3; i++)
+	 {
+		 for (int j = 0; j < 3; j++)
+		 {
+			 std::cout << matrix_result[i][j] << " ";
+		 }
+		 std::cout << std::endl;
+	 }
+
+
+
+	 cudaFree(matrix_one_d);
+	 cudaFree(matrix_two_d);
+	 cudaFree(matrix_result_d);
+	 
+
+	 return 0;
+}
